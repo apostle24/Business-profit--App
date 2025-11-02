@@ -2,3 +2,6 @@ streamlit
 scikit-learn
 pandas
 pyngrok
+fpdf
+firebase_admin
+requests
