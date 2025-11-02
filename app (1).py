@@ -4,36 +4,60 @@ import time
 
 st.set_page_config(page_title="Business Profit Analyzer", page_icon="💼", layout="wide")
 
-# --- HEADER ---
-st.title("💼 Business Profit Analyzer (Premium Version)")
-st.markdown("Analyze, visualize, and grow your business — globally.")
+# --- USER AUTH (SIMPLE VERSION) ---
+# Temporary in-memory user storage
+users = {"admin@gmail.com": {"password": "1234", "premium": True}}
 
-# --- SIDEBAR ---
-st.sidebar.header("⚙️ App Settings")
-st.sidebar.success("Connected to Global Server 🌍")
+def login_user(email, password):
+    user = users.get(email)
+    if user and user["password"] == password:
+        return user
+    return None
 
-menu = st.sidebar.selectbox(
-    "Navigate",
-    ["Home", "Add Business Data", "Analytics Dashboard", "Subscription & Payment", "About"]
-)
+# --- LOGIN PAGE ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_email = None
+    st.session_state.premium = False
 
-# --- HOME ---
+if not st.session_state.logged_in:
+    st.title("🔐 Business Profit Analyzer Login")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        user = login_user(email, password)
+        if user:
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            st.session_state.premium = user["premium"]
+            st.success("✅ Login successful! Click 'Rerun' to enter app.")
+            st.stop()
+        else:
+            st.error("❌ Invalid credentials.")
+    st.info("Use demo login → Email: admin@gmail.com | Password: 1234")
+    st.stop()
+
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("💼 Business Profit Analyzer")
+menu = st.sidebar.radio("Navigate", ["Home", "Add Business Data", "Analytics Dashboard", "Subscription & Payment", "About"])
+st.sidebar.write(f"👤 Logged in as: {st.session_state.user_email}")
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.experimental_rerun()
+
+# --- HOME PAGE ---
 if menu == "Home":
-    st.subheader("Welcome to Business Profit Analyzer")
+    st.title("📊 Business Profit Analyzer (Premium)")
     st.write("""
-    This premium tool helps you:
-    - Track your business performance
-    - Visualize profits and expenses
-    - Predict growth using AI insights
-    - Upgrade for advanced global analytics
+    Welcome to the Premium Business Profit Analyzer App!
+    - Add and analyze your business data.
+    - Predict profits and growth.
+    - Upgrade for unlimited access.
     """)
-    st.image("https://images.unsplash.com/photo-1522202176988-66273c2fd55f", use_container_width=True)
-    st.markdown("### 🌍 Designed for global entrepreneurs and creators.")
 
 # --- ADD BUSINESS DATA ---
 elif menu == "Add Business Data":
-    st.subheader("📊 Enter Your Business Data")
-
+    st.subheader("📁 Enter Your Business Data")
     business_name = st.text_input("Business Name")
     income = st.number_input("Monthly Income ($)", min_value=0.0)
     expenses = st.number_input("Monthly Expenses ($)", min_value=0.0)
@@ -47,10 +71,11 @@ elif menu == "Add Business Data":
             "Expenses ($)": [expenses],
             "Profit ($)": [income - expenses],
             "Staff": [staff_count],
-            "Country": [country]
+            "Country": [country],
+            "User": [st.session_state.user_email]
         })
         df.to_csv("business_data.csv", mode="a", index=False, header=False)
-        st.success("✅ Data Saved Successfully!")
+        st.success("✅ Data saved successfully!")
 
 # --- ANALYTICS DASHBOARD ---
 elif menu == "Analytics Dashboard":
@@ -58,40 +83,43 @@ elif menu == "Analytics Dashboard":
 
     try:
         df = pd.read_csv("business_data.csv")
-        st.dataframe(df)
-
-        st.metric("Total Businesses", len(df))
-        st.metric("Average Profit", f"${df['Profit ($)'].mean():.2f}")
-        st.metric("Total Income", f"${df['Income ($)'].sum():.2f}")
-
-        st.bar_chart(df[['Income ($)', 'Expenses ($)', 'Profit ($)']])
-        st.line_chart(df['Profit ($)'])
+        df_user = df[df["User"] == st.session_state.user_email]
+        if df_user.empty:
+            st.warning("⚠️ You have no data yet.")
+        else:
+            st.dataframe(df_user)
+            st.metric("Total Records", len(df_user))
+            st.metric("Average Profit", f"${df_user['Profit ($)'].mean():.2f}")
+            st.bar_chart(df_user[['Income ($)', 'Expenses ($)', 'Profit ($)']])
     except FileNotFoundError:
-        st.warning("⚠️ No data found. Please add business data first.")
+        st.warning("⚠️ No data file found yet. Add some business data first.")
 
-# --- SUBSCRIPTION & PAYMENT ---
+# --- SUBSCRIPTION ---
 elif menu == "Subscription & Payment":
     st.subheader("💳 Premium Subscription")
-
-    st.info("Upgrade to Premium for full access to global analytics and advanced AI insights.")
-    st.markdown("**Plans:**\n- Basic: Free\n- Premium: $10/month\n- Global Business: $25/month")
-
-    email = st.text_input("Enter your email for payment confirmation")
-    plan = st.selectbox("Select Plan", ["Basic", "Premium", "Global Business"])
-    if st.button("Proceed to Payment"):
-        with st.spinner("Processing Payment..."):
-            time.sleep(3)
-        st.success(f"✅ {plan} Plan Activated Successfully for {email}!")
+    if st.session_state.premium:
+        st.success("✅ You already have Premium access.")
+    else:
+        st.info("Upgrade to Premium for full analytics and export features.")
+        st.markdown("[👉 Buy Premium on Selar](https://selar.com/showlove/nbjoshua)")
+        code = st.text_input("Enter Premium Code")
+        if st.button("Activate Premium"):
+            if code.strip().upper() == "PREMIUM2025":
+                users[st.session_state.user_email]["premium"] = True
+                st.session_state.premium = True
+                st.success("✅ Premium Activated! Please refresh the app.")
+            else:
+                st.error("❌ Invalid Code. Please buy from Selar.")
 
 # --- ABOUT ---
 elif menu == "About":
-    st.subheader("ℹ️ About the App")
-    st.write("""
-    **Business Profit Analyzer (Premium)** helps entrepreneurs analyze their data,
-    visualize performance, and make informed business decisions globally.
-    
-    **Developer:** Apostle Joshua  
-    **Version:** 2.0 Premium  
-    **Powered by:** Streamlit, Python, and AI-driven analytics.
+    st.subheader("ℹ️ About This App")
+    st.markdown("""
+    **Business Profit Analyzer** helps entrepreneurs track profits, predict outcomes, and visualize performance.
+
+    **Creator:** Apostle Joshua  
+    **Instagram:** [@nbjoshua6](https://instagram.com/nbjoshua6)  
+    **Website:** [faithconncthub.store](https://faithconncthub.store)  
+    **Email:** nbjoshua8@gmail.com  
+    **Phone:** +233556231984
     """)
-    st.markdown("🌐 [Visit GitHub Repository](https://github.com/apostle24/Business-profit-App)")
